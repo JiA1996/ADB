@@ -1,5 +1,6 @@
 from datetime import datetime
 from utils import Variable
+import logging
 
 
 class DataManager():
@@ -18,6 +19,7 @@ class DataManager():
         for i in range(1, 11):
             DataManager.is_up[i] = True
             DataManager.variable_dict[i] = {}
+            DataManager.all_up = True
 
         for i in range(1, 21):
             if i % 2 == 0:
@@ -36,12 +38,16 @@ class DataManager():
     @staticmethod
     def commit(transaction):
         for site, label, value in transaction.updated_list:
+            logging.info("Update X{0} at site {1} to {2}".
+                         format(label, site, value))
             DataManager.write(site, label, value)
+        logging.info("Transaction {} commits".format(transaction.id))
 
     @staticmethod
     def fail(site):
         DataManager.all_up = False
         DataManager.is_up[site] = False
+        logging.info("Site {} fails".format(site))
 
     def recover(site):
         assert not DataManager.is_up[site]
@@ -49,11 +55,14 @@ class DataManager():
         for _, v in DataManager.variable_dict[site].items():
             v.committed = False
 
+        logging.info("Site {} recovers".format(site))
         DataManager.all_up = True
         for _, status in DataManager.is_up.items():
             if not status:
                 DataManager.all_up = False
+                logging.info("Currently NOT all sites are up")
                 return
+        logging.info("Currently all sites are up")
     '''
     @staticmethod
     def get_all_sites(label):

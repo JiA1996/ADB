@@ -1,0 +1,17 @@
+# Test 1
+// T1 wait for T2, T2 wait for T1
+// T2 will abort, as T2 is younger than T1
+
+begin(T1)
+begin(T2)
+#W(T1,x1,100)
+#W(T2,x2,2000)
+#W(T1,x2,200)
+#W(T2,x1,1000)
+#end(T1)
+#dump()
+
+// Final status of dump
+// x1: 100 at site 2.
+// x2: 200 at all sites.
+// Other variables will not be changed (initial value).

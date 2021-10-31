@@ -1,5 +1,7 @@
-from utils import Instruction, Transaction, InstType
+from utils import Transaction, InstType
+from utils import Parser
 from data_manager import DataManager
+import logging
 
 
 class TransactionManager():
@@ -17,23 +19,31 @@ class TransactionManager():
                 self.wait_for_variable[var] = []
 
     def detect_deadlock(self, transaction):
+        logging.info("Start to do cyclic check")
         start = transaction
         youngest = transaction.time_stamp
         victim = transaction
         while transaction.blocked_by != start:
+            logging.info("Transaction {0} is locked by {1}".
+                         format(transaction.id, transaction.blocked_by.id))
             if transaction.blocked_by is None:
+                logging.info("No deadlock found")
                 return False
             transaction = transaction.blocked_by
             if transaction.time_stamp > youngest:
                 youngest = transaction.time_stamp
                 victim = transaction
+        logging.info("Deadlock detected! Kill Transaction {}".
+                     format(victim.id))
         return victim
 
     def add_transaction(self, transaction):
+        logging.info("Transaction {} added".format(transaction.id))
         self.transactions[transaction.id] = transaction
         self.locks[transaction] = []
 
     def abort(self, transaction):
+        logging.info("Abort Transaction {}".format(transaction.id))
         self.release_lock()
         self.transactions.pop(transaction.id)
 
@@ -51,7 +61,10 @@ class TransactionManager():
         self.release_lock(transaction)
 
     def release_lock(self, transaction):
+        logging.info("Release all locks from Transaction {}".
+                     format(transaction.id))
         locked_variables = self.locks[transaction]
+        logging.info("Released: {}".format(", ".join(locked_variables)))
         if locked_variables == []:
             return
         for locked_variable in locked_variables:
@@ -59,33 +72,9 @@ class TransactionManager():
             # TODO let other T work
         self.locks[transaction] = []
 
-    @staticmethod
-    def parse(inst):
-        def is_number(char):
-            return char.isnumeric() or char == "."
-
-        def to_numeric(num):
-            f = float(num)
-            i = int(f)
-            return i if i == f else f
-
-        split_at = inst.index('(')
-        inst_type = InstType[(inst[0:split_at]).upper()]
-        remaining = inst[split_at + 1: -1].split(',')
-        remaining = [list(filter(is_number, x)) for x in remaining]
-        remaining = [to_numeric(''.join(x)) for x in remaining]
-        if inst_type in [InstType.FAIL, InstType.RECOVER]:
-            return Instruction(inst_type, target=remaining[0])
-        elif inst_type in [InstType.BEGIN, InstType.END, InstType.BEGINRO]:
-            return Instruction(inst_type, tid=remaining[0])
-        elif inst_type == InstType.W:
-            return Instruction(inst_type, remaining[0],
-                            remaining[1], remaining[2])
-        else:
-            return Instruction(inst_type, remaining[0], remaining[1])
-
     def handle(self, inst):
-        instruction = TransactionManager.parse(inst)
+        instruction = Parser.parse_instruction(inst)
+        logging.info("Parsed instruction:\n{}".format(instruction))
         if instruction.inst_type == InstType.BEGIN:
             self.add_transaction(Transaction(instruction.tid, False))
             return
@@ -93,16 +82,26 @@ class TransactionManager():
             self.add_transaction(Transaction(instruction.tid, True))
             return
         elif instruction.inst_type == InstType.END:
+            if instruction.tid not in self.transactions:
+                logging.info("the instruction belongs to aborted\
+                             Transaction {}".format(instruction.tid))
+                return
             self.commit(self.transactions[instruction.tid])
             self.locks.pop(self.transactions[instruction.tid])
             self.transactions.pop(instruction.tid)
             return
         elif instruction.inst_type == InstType.FAIL:
             DataManager.fail(instruction.target)
+            return
         elif instruction.inst_type == InstType.RECOVER:
             DataManager.recover(instruction.target)
             # TODO wait for site
+            return
 
+        if instruction.tid not in self.transactions:
+            logging.info("the instruction belongs to aborted\
+                             Transaction {}".format(instruction.tid))
+            return
         transaction = self.transactions[instruction.tid]
         transaction.current_inst = instruction
         if instruction.inst_type == InstType.W:
