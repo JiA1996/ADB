@@ -1,0 +1,32 @@
+begin(T1)
+begin(T2)
+begin(T3)
+begin(T4)
+R(T2, x2)     # assume T2 read x2 at site 1
+fail(6)
+W(T1, x2, 10) # want to lock all sites, but cannot get lock on site 1, and site 6 failed
+recover(6)    # site 6 back
+R(T3, x5)     # read x5 at site 6, can T3 execute before W(T1, x2, 10)?
+W(T4, x5, 20)
+end(T3)
+end(T4)
+end(T1)
+end(T2)       # W(T1, x2, 10) resumes, should we lock x2 at site 6?
+
+# If T3 cannot proceed, can I conclude that if a write operation is blocked,
+# all operation 
+
+begin(T1)
+begin(T2)
+begin(T3)
+begin(T4)
+R(T2, x3)     # assume T2 read x2 at site 1
+fail(6)
+W(T1, x3, 10) # want to lock all sites, but cannot get lock on site 1, and site 6 failed
+recover(6)    # site 6 back
+R(T3, x5)     # read site 6, can T3 execute before W(T1, x2, 10)?
+W(T4, x5, 20)
+end(T3)
+end(T4)
+end(T1)
+end(T2)

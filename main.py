@@ -1,4 +1,6 @@
 from transaction_manager import TransactionManager
+from data_manager import DataManager
+from utils import Parser
 import logging
 import sys
 import os
@@ -22,8 +24,10 @@ if __name__ == "__main__":
         print(20*"#", test, 20*"#")
         print(55*"#")
         tm = TransactionManager()
+        # DataManager.dump()
         for line in f.readlines():
             line = line.strip()
             if line and not line.startswith(("#", "//")):
-                tm.handle(line)
+                instruction = Parser.parse_instruction(line)
+                tm.handle(instruction)
         f.close()
