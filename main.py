@@ -12,22 +12,31 @@ with open("history.log", "w"):
 if __name__ == "__main__":
     if len(sys.argv) >= 2:
         dir_path = sys.argv[1]
+        for test in os.listdir(dir_path):
+            if not test.startswith("testcase"):
+                continue
+            test_path = dir_path + '/' + test
+            f = open(test_path, "r")
+            print(55 * "#")
+            print(20 * "#", test, 20 * "#")
+            print(55 * "#")
+            tm = TransactionManager()
+            DataManager.dump()
+            for line in f.readlines():
+                line = line.strip()
+                if line and not line.startswith(("#", "//")):
+                    instruction = Parser.parse_instruction(line)
+                    tm.handle(instruction)
+            f.close()
     else:
-        raise AttributeError("Missing test case path")
-
-    for test in os.listdir(dir_path):
-        if not test.startswith("testcase"):
-            continue
-        test_path = dir_path + '/' + test
-        f = open(test_path, "r")
-        print(55*"#")
-        print(20*"#", test, 20*"#")
-        print(55*"#")
         tm = TransactionManager()
-        # DataManager.dump()
-        for line in f.readlines():
+        print("No testcase path, reading from standard input...")
+        while True:
+            line = input()
             line = line.strip()
             if line and not line.startswith(("#", "//")):
                 instruction = Parser.parse_instruction(line)
                 tm.handle(instruction)
-        f.close()
+            print("---------------------------------------------")
+
+
